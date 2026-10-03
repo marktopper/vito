@@ -97,10 +97,14 @@ test('restore script renders and escapes database identifiers', function (string
         ->and($rendered)->toContain('DB_NAME="${1//\\\\/\\\\\\\\}"')
         ->and($rendered)->toContain('DB_NAME="${DB_NAME//\\`/\\`\\`}"')
         ->and($rendered)->toContain('STAGING_DB="_vito_restore_$(date +%s%N)"')
+        ->and($rendered)->toContain('PREVIOUS_DB="_vito_restore_previous_$(date +%s%N)"')
         ->and($rendered)->toContain('DROP DATABASE IF EXISTS \\`${STAGING_DB}\\` SYNC;')
         ->and($rendered)->toContain('RESTORE DATABASE \\`${DB_NAME}\\` AS \\`${STAGING_DB}\\` FROM Disk(${SQ}backups${SQ}')
-        ->and($rendered)->toContain('DROP DATABASE IF EXISTS \\`${DB_NAME}\\` SYNC;')
+        ->and($rendered)->toContain('RENAME DATABASE \\`${DB_NAME}\\` TO \\`${PREVIOUS_DB}\\`;')
         ->and($rendered)->toContain('RENAME DATABASE \\`${STAGING_DB}\\` TO \\`${DB_NAME}\\`;')
+        ->and($rendered)->toContain('if [ "$PREVIOUS_DB_RENAMED" -eq 1 ] && [ "$RESTORE_PROMOTED" -eq 0 ]; then')
+        ->and($rendered)->toContain('RENAME DATABASE \\`${PREVIOUS_DB}\\` TO \\`${DB_NAME}\\`;')
+        ->and($rendered)->not->toContain('DROP DATABASE IF EXISTS \\`${DB_NAME}\\` SYNC;')
         ->and($rendered)->toContain("echo 'VITO_SSH_ERROR' && exit 1")
         ->and($rendered)->toContain(escapeshellarg($database));
 })->with([
@@ -109,6 +113,3 @@ test('restore script renders and escapes database identifiers', function (string
     'analytics\\db',
     'db_name_123',
 ]);
-
-
-
